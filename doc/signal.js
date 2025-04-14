@@ -4,6 +4,7 @@ const Signal = function(options){
   signal.room = []
   Signal.emitter(signal)
   signal.options = options
+  Object.defineProperty(signal,"id",{get:()=>signal.socket.id})
   signal.socket = io(options.server, {
     autoConnect: true,
     reconnection: true,
@@ -14,6 +15,9 @@ const Signal = function(options){
     transports: ["websocket"],
     //perMessageDeflate: false
   });
+  signal.socket.on("connect",function(){
+    signal.emit("connect")
+  })
   signal.socket.onAny(function (event, data) {
     console.log("Signal:On",{event, data});
     if(event=="room"){
