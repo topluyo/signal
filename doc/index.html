@@ -1,0 +1,116 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.3/socket.io.js" crossorigin="anonymous"></script>
+<script src="//hasandelibas.github.io/documenter/documenter.js"></script>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<header body-class="show-menu theme-light">
+  <a href="../" icon-button="" documenter-icon-arrow-left=""></a>
+  <div title="">📄 Signal</div>
+  <div class="space"></div>
+</header>
+<style>
+  [preview] pre{margin:0}
+</style>
+
+# Signal(options)
+
+```js
+signal = Signal({
+  server:"https://topluyo-510030293cd5.herokuapp.com/socket/public:special_room",
+  user:{
+    "name"  : "Hasan",
+    "image" : "https://cdn.topluyo.com/logo/674fda914ac73.webp"
+  }
+})
+```
+
+* __server__ : string
+* __user__ : string or {}  or Promise
+
+## .broadcast(message)
+
+```js
+signal.broadcast("Hello everybody")
+```
+
+## .message(message,target)
+
+```js
+signal.message("hi there",signal.room[0].id)
+```
+
+## .on(event)
+
+## .on("userConnect", function(data))
+
+```js
+signal.on("userConnect", function(data){
+  console.log(data)
+})
+```
+
+<div preview="response">```json
+{
+  "id": "IAx2O36F5fxPT2RpAAAP",
+  "user": {
+    "name": "Hasan",
+    "image": "https://cdn.topluyo.com/logo/674fda914ac73.webp"
+  }
+}
+```</div>
+
+
+
+## .on("userDisconnect", function(data))
+
+```js
+signal.on("userDisconnect", function(data){
+  console.log(data)
+})
+```
+
+<div preview="response">```json
+{
+  "id": "IAx2O36F5fxPT2RpAAAP",
+  "user": {
+    "name": "Hasan",
+    "image": "https://cdn.topluyo.com/logo/674fda914ac73.webp"
+  }
+}
+```</div>
+
+
+
+
+
+
+## .on("message", function(data))
+
+```js
+signal.on("message", function(data){
+  console.log(data)
+})
+```
+
+<div preview="response">```json
+{
+  "source": "VcbxHgEoK4kC9eobAAAv",
+  "data": "hi there",
+  "user": {
+    "name": "Hasan",
+    "image": "https://cdn.topluyo.com/logo/674fda914ac73.webp"
+  }
+}
+```</div>
+
+
+
+
+# Examples
+
+<a button href="./examples/whatsapp.html?room=X">Whatsapp Example</a>
+
+
+<div preview="response">
+  <iframe src="./examples/whatsapp.html?room=X" style="border:none;width:100%;height:320px;"></iframe>
+</div>
+
