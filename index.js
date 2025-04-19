@@ -49,13 +49,13 @@ const io = socketIO(server, {
   path: "/socket/" // Default Null
 });
 
-app.use(express.static('public'))
+app.use(express.static('doc'))
 
-
+/*
 app.get("/", function(req, res){
   res.sendFile(__dirname + '/public/index.html');
 })
-
+*/
 
 app.all("/ping", function(req, res){
   res.json( req.query.v ? req.query.v : "pong" );
