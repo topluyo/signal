@@ -52,7 +52,7 @@ const Signal = function(options){
     if(typeof(signal.options.user)!="function"){
       signal.socket.emit("pass",signal.options.user)
     }else{
-      signal.socket.user().then(user=>{
+      signal.options.user().then(user=>{
         signal.socket.emit("pass",user)
       })
     }
