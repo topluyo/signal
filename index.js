@@ -49,13 +49,13 @@ const io = socketIO(server, {
   path: "/socket/" // Default Null
 });
 
-app.use(express.static('doc'))
+app.use(express.static('public'))
 
-/*
+
 app.get("/", function(req, res){
   res.sendFile(__dirname + '/public/index.html');
 })
-*/
+
 
 app.all("/ping", function(req, res){
   res.json( req.query.v ? req.query.v : "pong" );
@@ -75,6 +75,8 @@ const namespace = io.of(/\/private:([0-9a-zA-Z\-\_]+):([0-9a-zA-Z\-\_]+)$/)
 namespace.on("connection", function (socket) {
   let user;
   function ready(){
+
+
     let nsp = socket.nsp
     function room(){
       nsp.fetchSockets().then(sockets=>{
@@ -120,13 +122,6 @@ namespace.on("connection", function (socket) {
           //socket.emit("success",{kicked:soc.id})
           //soc.disconnect(true);
         }
-        
-        /*
-        if(soc.nick===nick){
-          soc.disconnect(true);
-          socket.emit({ kicked: soc.id });
-        }
-        */
       }))
     })
   
@@ -139,10 +134,8 @@ namespace.on("connection", function (socket) {
   socket.on("pass",function(pass){
     let decode = md5( API_KEY + ":" + socket.APP );
     let parsed = decrypt(pass, decode);
-    socket.emit("token",decode)
     if(parsed=="") return socket.emit("info","[AUTH PROBLEM]");
     user = JSON.parse(parsed)
-    socket.emit("info",user)
     if(Date.now()-user.TIME>10*1000 /* 10 second */) return socket.disconnect(); //@ 10 saniye gecikme durumunda sunucudan kopar
   
     if(user.ROOM!=socket.ROOM) return
@@ -213,7 +206,53 @@ publicNameSpace.on("connection", function (socket) {
 
 
 
-
+//^ LISTEN ROOM
+const listenNamespace = io.of(/\/listen:([0-9a-zA-Z\-\_]+):([0-9a-zA-Z\-\_]+)$/)
+listenNamespace.on("connection", function (socket) {
+  let user;
+  function ready(){ 
+    socket.emit("join",user)
+    socket.on("message", function ({to, data}) {
+      let decode = md5( API_KEY + ":" + socket.APP );
+      let parsed = decrypt(to, decode);
+      data = decrypt(data,decode)
+      if(parsed!="" && data!=""){
+        let room = "/socket/listen:" + socket.APP + ":" + socket.ROOM  
+        io.of(room).fetchSockets().then(sockets=>sockets.map(soc=>{
+          if(soc.USER.id==parsed){
+            soc.emit("message", {"source": 0, "data": data})
+          }
+        }))
+      }
+    })
+    
+    socket.on("test",function(){
+      socket.emit("message",(new Date()).toUTCString())
+    })
+  
+  }
+  
+  
+  socket.on("pass",function(pass){
+    let decode = md5( API_KEY + ":" + socket.APP );
+    let parsed = decrypt(pass, decode);
+    if(parsed=="") return socket.emit("info","[AUTH PROBLEM]");
+    user = JSON.parse(parsed)
+    
+    if(Date.now()-user.TIME>10*1000 /* 10 second */) return socket.disconnect(); //@ 10 saniye gecikme durumunda sunucudan kopar
+  
+    if(user.ROOM!=socket.ROOM) return
+    
+    socket.USER = user;
+    socket.USER.ID = socket.id
+    socket.POWER = user.POWER || false;
+    ready();
+  })
+  
+  socket.ROOM = socket.nsp.name.split(/^\/socket\//).join("").split(":")[2]
+  socket.APP  = socket.nsp.name.split(/^\/socket\//).join("").split(":")[1]
+  socket.emit("waiting",socket.ROOM);
+})
 
 
 server.listen(PORT, e => {
