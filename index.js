@@ -219,7 +219,7 @@ listenNamespace.on("connection", function (socket) {
       if(parsed!="" && data!=""){
         let room = "/socket/listen:" + socket.APP + ":" + socket.ROOM  
         io.of(room).fetchSockets().then(sockets=>sockets.map(soc=>{
-          if(soc.USER.id==parsed){
+          if(soc.USER && soc.USER.id==parsed){
             soc.emit("message", {"source": 0, "data": data})
           }
         }))
