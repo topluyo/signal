@@ -2,15 +2,15 @@
  * Front end source is in https://app.uyguluyo.com/signal/
  * SIGNAL
  */
-const PORT = process.env.PORT || 5002
 const http = require('http');
 const express = require('express')
 const socketIO = require('socket.io');
 const app = express()
 const server = http.Server(app);
-const fs = require('fs');
 const crypto = require('crypto');
-const API_KEY = require("./.API_KEY.json");
+const { wrapHandler } = require('./mailer');
+require('dotenv').config();
+const PORT = process.env.PORT || 5002
 
 function md5(input) {
   return crypto.createHash('md5').update(input).digest('hex');
@@ -65,9 +65,9 @@ app.all("/control", function(req, res){
   res.send( decrypt(req.query.token, API) );
 })
 
-function LOG(text){
+// function LOG(text){
   //fs.appendFileSync('log.txt', text + "\n");
-}
+// }
 
 
 //^ PRIVATE ROOM
@@ -89,24 +89,19 @@ namespace.on("connection", function (socket) {
     room()
     nsp.emit("join", {"source":socket.id,"user":socket.USER}); 
   
-    socket.on("message", function ({to, data}) {
-      nsp.to(to).emit("message", {"source": socket.id, "data": data})
-    })
+    socket.on('message', wrapHandler(socket, 'message', ({ to, data }) => {
+      nsp.to(to).emit('message', { source: socket.id, data });
+    }));
   
-    socket.on("broadcast", function(data){
-      nsp.emit("message",{"source":socket.id, "data":data})
-    })
+    socket.on('broadcast', wrapHandler(socket, 'broadcast', (data) => {
+      nsp.emit('message', { source: socket.id, data });
+    }));
   
-    socket.on("test",function(){
-      socket.emit("message",(new Date()).toUTCString())
-    })
+    socket.on('test', wrapHandler(socket, 'test', () => {
+      socket.emit('message', new Date().toUTCString());
+    }));
 
-    
-    socket.on("disconnect", function () {
-      room()
-    })
-
-    socket.on("kick", function(user){
+    socket.on("kick", wrapHandler(socket, 'kick', (user)=>{
       if(!socket.POWER) return;   
       let room = "/socket/private:" + socket.APP + ":" + socket.ROOM  
       let count = 0;
@@ -123,16 +118,16 @@ namespace.on("connection", function (socket) {
           //soc.disconnect(true);
         }
       }))
-    })
-  
-    socket.on("disconnect", function () {
+    }))
+
+    socket.on("disconnect", wrapHandler(socket, 'disconnect', () => {
       room()
-    })
+    }))
   }
   
   
-  socket.on("pass",function(pass){
-    let decode = md5( API_KEY + ":" + socket.APP );
+  socket.on("pass",wrapHandler(socket,"pass",(pass)=>{
+    let decode = md5( process.env.API_KEY + ":" + socket.APP );
     let parsed = decrypt(pass, decode);
     if(parsed=="") return socket.emit("info","[AUTH PROBLEM]");
     user = JSON.parse(parsed)
@@ -144,7 +139,7 @@ namespace.on("connection", function (socket) {
     socket.USER.ID = socket.id
     socket.POWER = user.POWER || false;
     ready();
-  })
+  }))
   
   socket.ROOM = socket.nsp.name.split(/^\/socket\//).join("").split(":")[2]
   socket.APP  = socket.nsp.name.split(/^\/socket\//).join("").split(":")[1]
@@ -170,37 +165,37 @@ publicNameSpace.on("connection", function (socket) {
     }
   
     room()
-    nsp.emit("join", {"source":socket.id,"user":socket.USER}); 
-  
-    socket.on("message", function ({to, data}) {
-      nsp.to(to).emit("message", {"source": socket.id, "data": data})
-    })
-  
-    socket.on("broadcast", function(data){
-      nsp.emit("message",{"source":socket.id, "data":data})
-    })
-  
-    socket.on("test",function(){
-      socket.emit("message",(new Date()).toUTCString())
-    })
+    nsp.emit("join", {"source":socket.id,"user":socket.USER});
 
-    
-    socket.on("disconnect", function () {
+    socket.on("message", wrapHandler(socket, 'message', ({to, data}) => {
+      nsp.to(to).emit("message", {"source": socket.id, "data": data})
+    }))
+
+    socket.on("broadcast", wrapHandler(socket, 'broadcast', (data) => {
+      nsp.emit("message", {"source": socket.id, "data": data})
+    }));
+
+    socket.on("test", wrapHandler(socket, 'test', () => {
+      socket.emit("message", (new Date()).toUTCString())
+    }));
+
+
+    socket.on("disconnect", wrapHandler(socket, 'disconnect', () => {
       room()
-    })
+    }))
   }
-  
-  
-  socket.on("pass",function(user){
-    socket.emit("info",user)
+
+
+  socket.on("pass", wrapHandler(socket, 'pass', (user) => {
+    socket.emit("info", user)
     let room = socket.nsp.name.split(/^\/socket\//).join("");
     socket.emit("info",room)
     socket.USER = user
     socket.ROOM = room
     ready();
-  })
-  
-  socket.emit("waiting");  
+  }));
+
+  socket.emit("waiting");
 })
 
 
@@ -212,8 +207,8 @@ listenNamespace.on("connection", function (socket) {
   let user;
   function ready(){ 
     socket.emit("join",user)
-    socket.on("message", function ({to, data}) {
-      let decode = md5( API_KEY + ":" + socket.APP );
+    socket.on("message", wrapHandler(socket, 'message', ({to, data}) => {
+      let decode = md5( process.env.API_KEY + ":" + socket.APP );
       let parsed = decrypt(to, decode);
       data = decrypt(data,decode)
       if(parsed!="" && data!=""){
@@ -224,31 +219,29 @@ listenNamespace.on("connection", function (socket) {
           }
         }))
       }
-    })
-    
-    socket.on("test",function(){
-      socket.emit("message",(new Date()).toUTCString())
-    })
-  
+    }));
+
+    socket.on("test", wrapHandler(socket, 'test', () => {
+      socket.emit("message", (new Date()).toUTCString())
+    }));
   }
-  
-  
-  socket.on("pass",function(pass){
-    let decode = md5( API_KEY + ":" + socket.APP );
+
+  socket.on("pass", wrapHandler(socket, 'pass', (pass) => {
+    let decode = md5( process.env.API_KEY + ":" + socket.APP );
     let parsed = decrypt(pass, decode);
     if(parsed=="") return socket.emit("info","[AUTH PROBLEM]");
-    user = JSON.parse(parsed)
-    
+    user = JSON.parse(parsed);
+
     if(Date.now()-user.TIME>10*1000 /* 10 second */) return socket.disconnect(); //@ 10 saniye gecikme durumunda sunucudan kopar
-  
-    if(user.ROOM!=socket.ROOM) return
-    
+
+    if(user.ROOM!=socket.ROOM) return;
+
     socket.USER = user;
     socket.USER.ID = socket.id
     socket.POWER = user.POWER || false;
     ready();
-  })
-  
+  }));
+
   socket.ROOM = socket.nsp.name.split(/^\/socket\//).join("").split(":")[2]
   socket.APP  = socket.nsp.name.split(/^\/socket\//).join("").split(":")[1]
   socket.emit("waiting",socket.ROOM);
